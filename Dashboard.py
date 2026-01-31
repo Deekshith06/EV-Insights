@@ -1,388 +1,311 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+
 from data_utils import load_ev_data
 from improved_ev_advisor import create_improved_ev_advisor
 
 
-# Configure page settings
+# -----------------------------------------------------------------------------
+# Page configuration & global styles
+# -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="EV Dashboard",
-    page_icon="📊",
+    page_title="EV Range & Insights Dashboard",
+    page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 
-# Maintain dark theme preference
-if 'dark_mode' not in st.session_state:
-    st.session_state.dark_mode = True
+def inject_global_styles() -> None:
+    """Inject dark theme styles, typography, and component overrides."""
+    st.markdown(
+        """
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --bg: #0d1117;
+            --panel: #161b22;
+            --panel-soft: #1f2430;
+            --border: #30363d;
+            --text: #f0f6fc;
+            --secondary: #8b949e;
+            --accent: #58a6ff;
+            --accent-2: #a371f7;
+        }
+
+        body, [data-testid="stAppViewContainer"] {
+            background: var(--bg) !important;
+            color: var(--text) !important;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #161b22 0%, #0d1117 100%) !important;
+            border-right: 1px solid var(--border);
+        }
+
+        h1, h2, h3 {
+            color: var(--text) !important;
+            font-weight: 600 !important;
+        }
+
+        h1 {
+            font-size: 2.35rem !important;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.75rem !important;
+        }
+
+        h2 {
+            font-size: 1.6rem !important;
+            margin: 2rem 0 0.75rem 0 !important;
+        }
+
+        h3 {
+            font-size: 1.2rem !important;
+            margin: 1.5rem 0 0.5rem 0 !important;
+        }
+
+        p, label, span, li {
+            color: var(--secondary) !important;
+        }
+
+        .stButton > button {
+            background: linear-gradient(135deg, #238636, #2ea043) !important;
+            color: #fff !important;
+            border-radius: 10px !important;
+            border: none !important;
+            font-weight: 600 !important;
+            transition: transform 0.2s ease !important;
+        }
+
+        .stButton > button:hover {
+            transform: translateY(-1px) scale(1.01);
+        }
+
+        [data-testid="stMetric"] {
+            background: linear-gradient(135deg, rgba(88,166,255,.08), rgba(163,113,247,.08)) !important;
+            border: 1px solid rgba(48,54,61,.7) !important;
+            border-radius: 18px !important;
+            padding: 1.2rem 1rem !important;
+            min-height: 130px;
+        }
+
+        [data-testid="stMetricLabel"] {
+            color: var(--secondary) !important;
+            letter-spacing: 0.02em;
+        }
+
+        [data-testid="stMetricValue"] {
+            color: var(--text) !important;
+        }
+
+        [data-testid="stSelectbox"] > div > div,
+        [data-testid="stMultiselect"] > div > div,
+        [data-testid="stTextInput"] > div > input,
+        [data-testid="stSlider"] > div > div,
+        [data-baseweb="select"] > div {
+            background: var(--panel-soft) !important;
+            color: var(--text) !important;
+            border-radius: 12px !important;
+            border: 1px solid var(--border) !important;
+        }
+
+        [data-baseweb="tag"] {
+            background: rgba(88,166,255,.15) !important;
+            color: var(--text) !important;
+            border: none !important;
+        }
+
+        .js-plotly-plot {
+            border-radius: 18px !important;
+            border: 1px solid rgba(48,54,61,.6);
+            padding: 0.5rem;
+            background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
-def apply_landing_styles():
-    """Apply styling for the landing page with improved spacing and readability."""
-    return """
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-[data-testid="stAppViewContainer"] { 
-    background-color: #0d1117 !important; 
-    padding-top: 2rem !important; 
-}
-
-[data-testid="stHeader"] { 
-    background-color: #0d1117 !important; 
-}
-
-[data-testid="stSidebar"] { 
-    background: linear-gradient(180deg, #161b22 0%, #0d1117 100%) !important; 
-    border-right: 1px solid #30363d !important;
-    padding: 1.5rem 1rem !important;
-}
-
-.main { 
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
-    line-height: 1.65;
-    padding: 1.5rem 2rem 3rem;
-}
-
-h1 { 
-    background: linear-gradient(135deg, #58a6ff, #a371f7); 
-    -webkit-background-clip: text; 
-    -webkit-text-fill-color: transparent; 
-    margin-bottom: 1rem !important;
-    font-size: 2.5rem !important;
-    font-weight: 800 !important;
-}
-
-h2 { 
-    color: #f0f6fc !important;
-    font-weight: 600 !important;
-    margin-top: 2.5rem !important;
-    margin-bottom: 1.25rem !important;
-    font-size: 1.75rem !important;
-}
-
-h3 { 
-    color: #f0f6fc !important;
-    font-weight: 600 !important;
-    margin-top: 1.5rem !important;
-    margin-bottom: 1rem !important;
-    font-size: 1.3rem !important;
-}
-
-p, span, label { 
-    color: #c9d1d9 !important;
-    line-height: 1.65;
-}
-
-[data-testid="stMetric"] { 
-    background: linear-gradient(135deg, #21262d 0%, #161b22 100%) !important; 
-    border: 1px solid #30363d !important; 
-    border-radius: 16px !important; 
-    padding: 1.5rem 1.25rem !important; 
-    margin-bottom: 1rem !important;
-    min-height: 120px !important;
-}
-
-[data-testid="stMetricValue"] { 
-    color: #f0f6fc !important; 
-    font-weight: 700 !important;
-    font-size: 1.9rem !important;
-    letter-spacing: -0.02em;
-}
-
-[data-testid="stMetricLabel"] { 
-    color: #8b949e !important; 
-    font-weight: 500 !important;
-    font-size: 0.9rem !important;
-    margin-bottom: 0.5rem !important;
-}
-
-.stButton > button { 
-    background: linear-gradient(135deg, #238636, #2ea043) !important; 
-    color: white !important; 
-    border-radius: 12px !important; 
-    padding: 0.6rem 1.5rem !important;
-    font-weight: 600 !important;
-    transition: all 0.3s ease !important;
-}
-
-.stButton > button:hover {
-    transform: translateY(-2px) scale(1.03) !important;
-}
-
-[data-testid="stSelectbox"] > div > div { 
-    border-radius: 12px !important; 
-    border: 2px solid #30363d !important; 
-    background: #21262d !important;
-    padding: 0.5rem !important;
-}
-
-.js-plotly-plot { 
-    border-radius: 16px !important; 
-    box-shadow: 0 4px 24px rgba(0,0,0,0.3) !important;
-    margin: 1.5rem 0 !important;
-}
-
-hr { 
-    background: linear-gradient(90deg, transparent, #30363d, transparent) !important; 
-    height: 1px !important; 
-    border: none !important;
-    margin: 3rem 0 !important;
-}
-
-::-webkit-scrollbar { 
-    width: 8px; 
-}
-
-::-webkit-scrollbar-track { 
-    background: #21262d; 
-}
-
-::-webkit-scrollbar-thumb { 
-    background: linear-gradient(180deg, #58a6ff, #a371f7); 
-    border-radius: 4px; 
-}
-</style>
-"""
-
-st.markdown(apply_landing_styles(), unsafe_allow_html=True)
-
-
-st.sidebar.markdown("---")
-
-
-# Load the dataset
-try:
-    ev_data = load_ev_data()
-except FileNotFoundError as error:
-    st.error(str(error))
-    ev_data = None
-
-if ev_data is not None:
-    # Page header
-    st.title("📊 EV Population Dashboard")
-    st.markdown("### Washington State Electric Vehicle Registration Analysis")
-    
-    st.markdown("""
-    Welcome to the EV Population Dashboard. This overview provides a high-level snapshot 
-    of the electric vehicle landscape in Washington State.
-    
-    **👈 Navigate using the sidebar:**
-    - **🏠 Home** — Interactive data exploration with mapping and advanced filters
-    - **🔮 Predictions** — Machine learning forecasts for adoption trends and market evolution
-    
-    ---
-    
-    ### ⚡ Quick Overview
-    
-    The metrics and visualizations below update dynamically based on your filter selections.
-    """)
-    
-    # Sidebar filter controls
+def apply_filters(ev_df: pd.DataFrame) -> pd.DataFrame:
+    """Render sidebar controls and return filtered dataframe."""
     st.sidebar.header("🔍 Filter Options")
-    
-    # Manufacturer filter
-    all_makes = ['All'] + sorted(ev_data['Make'].dropna().unique().tolist())
-    selected_manufacturer = st.sidebar.selectbox("Manufacturer", all_makes)
-    
-    filtered_data = ev_data.copy()
-    
-    if selected_manufacturer != 'All':
-        filtered_data = filtered_data[filtered_data['Make'] == selected_manufacturer]
-    
-    # Model year range filter
-    if 'Model Year' in ev_data.columns:
-        earliest_year = int(ev_data['Model Year'].min())
-        latest_year = int(ev_data['Model Year'].max())
-        
-        if earliest_year == latest_year:
-            st.sidebar.info(f"📅 All vehicles are from {earliest_year}.")
-        else:
-            year_selection = st.sidebar.slider(
-                "Model Year Range",
-                min_value=earliest_year,
-                max_value=latest_year,
-                value=(earliest_year, latest_year)
-            )
-            
-            filtered_data = filtered_data[
-                (filtered_data['Model Year'] >= year_selection[0]) &
-                (filtered_data['Model Year'] <= year_selection[1])
-            ]
-    
-    # Key performance metrics
+
+    filtered = ev_df.copy()
+
+    makes = ["All"] + sorted(ev_df["Make"].dropna().unique().tolist())
+    manufacturer = st.sidebar.selectbox("Manufacturer", makes)
+    if manufacturer != "All":
+        filtered = filtered[filtered["Make"] == manufacturer]
+
+    if "Model Year" in ev_df.columns:
+        year_min = int(ev_df["Model Year"].min())
+        year_max = int(ev_df["Model Year"].max())
+        year_range = st.sidebar.slider(
+            "Model Year Range",
+            min_value=year_min,
+            max_value=year_max,
+            value=(year_min, year_max),
+        )
+        filtered = filtered[
+            (filtered["Model Year"] >= year_range[0]) &
+            (filtered["Model Year"] <= year_range[1])
+        ]
+
+    return filtered
+
+
+def _render_metrics(ev_df: pd.DataFrame) -> None:
     st.markdown("---")
-    
-    metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
-    
-    with metric_col1:
-        st.metric(
-            "🚗 Total Vehicles",
-            f"{len(filtered_data):,}"
-        )
-    
-    with metric_col2:
-        unique_manufacturers = filtered_data['Make'].nunique()
-        st.metric(
-            "🏭 Manufacturers",
-            f"{unique_manufacturers:,}"
-        )
-    
-    with metric_col3:
-        if 'Electric Range' in filtered_data.columns:
-            average_range = filtered_data['Electric Range'].mean()
-            st.metric(
-                "⚡ Average Range",
-                f"{average_range:.0f} mi"
-            )
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("🚗 Total Vehicles", f"{len(ev_df):,}")
+
+    with col2:
+        st.metric("🏭 Manufacturers", f"{ev_df['Make'].nunique():,}")
+
+    with col3:
+        if "Electric Range" in ev_df.columns and not ev_df["Electric Range"].empty:
+            st.metric("⚡ Average Range", f"{ev_df['Electric Range'].mean():.0f} mi")
         else:
             st.metric("⚡ Average Range", "N/A")
-    
-    with metric_col4:
-        unique_counties = filtered_data['County'].nunique()
-        st.metric(
-            "📍 Counties",
-            f"{unique_counties:,}"
-        )
-    
-    # EV Recommendation System
-    create_improved_ev_advisor(filtered_data)
-    
-    # Data visualizations
+
+    with col4:
+        county_count = ev_df["County"].nunique() if "County" in ev_df.columns else 0
+        st.metric("📍 Counties", f"{county_count:,}")
+
+
+def _render_distribution_charts(ev_df: pd.DataFrame) -> None:
     st.markdown("---")
-    
-    chart_col1, chart_col2 = st.columns(2)
-    
-    with chart_col1:
+    col1, col2 = st.columns(2)
+
+    with col1:
         st.subheader("🔋 Vehicle Type Distribution")
-        
-        if 'Electric Vehicle Type' in filtered_data.columns:
-            type_distribution = filtered_data['Electric Vehicle Type'].value_counts()
-            
-            type_chart = px.pie(
-                values=type_distribution.values,
-                names=type_distribution.index,
-                color_discrete_sequence=px.colors.qualitative.Set3
+        if "Electric Vehicle Type" in ev_df.columns and not ev_df.empty:
+            type_counts = ev_df["Electric Vehicle Type"].value_counts()
+            chart = px.pie(
+                values=type_counts.values,
+                names=type_counts.index,
+                color_discrete_sequence=px.colors.qualitative.Set3,
             )
-            
-            type_chart.update_layout(
+            chart.update_layout(
                 margin=dict(l=20, r=20, t=40, b=20),
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='#f0f6fc', family='Inter, sans-serif')
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#f0f6fc", family="Inter, sans-serif"),
             )
-            
-            st.plotly_chart(type_chart, use_container_width=True)
-    
-    with chart_col2:
+            st.plotly_chart(chart, use_container_width=True)
+        else:
+            st.info("Vehicle type information is unavailable for the current filters.")
+
+    with col2:
         st.subheader("🏭 Top 10 Manufacturers")
-        
-        if 'Make' in filtered_data.columns:
-            top_manufacturers = filtered_data['Make'].value_counts().head(10)
-            
-            manufacturer_chart = px.bar(
-                x=top_manufacturers.values,
-                y=top_manufacturers.index,
-                orientation='h',
-                color=top_manufacturers.values,
-                color_continuous_scale='Blues',
-                labels={'x': 'Number of Vehicles', 'y': 'Manufacturer'}
+        if "Make" in ev_df.columns and not ev_df.empty:
+            top_makes = ev_df["Make"].value_counts().head(10)
+            chart = px.bar(
+                x=top_makes.values,
+                y=top_makes.index,
+                orientation="h",
+                color=top_makes.values,
+                color_continuous_scale="Blues",
+                labels={"x": "Number of Vehicles", "y": "Manufacturer"},
             )
-            
-            manufacturer_chart.update_layout(
+            chart.update_layout(
                 margin=dict(l=20, r=20, t=40, b=20),
-                yaxis={'categoryorder': 'total ascending'},
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(color='#f0f6fc', family='Inter, sans-serif'),
-                xaxis=dict(gridcolor='#30363d'),
-                showlegend=False
+                yaxis={"categoryorder": "total ascending"},
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="#f0f6fc", family="Inter, sans-serif"),
+                xaxis=dict(gridcolor="#30363d"),
+                showlegend=False,
             )
-            
-            st.plotly_chart(manufacturer_chart, use_container_width=True)
-    
-    # Temporal trend analysis
+            st.plotly_chart(chart, use_container_width=True)
+        else:
+            st.info("Manufacturer data is unavailable for the current filters.")
+
+
+def _render_trend_chart(ev_df: pd.DataFrame) -> None:
     st.markdown("---")
     st.subheader("📈 Registration Trends by Model Year")
-    
-    if 'Model Year' in filtered_data.columns:
-        yearly_registrations = filtered_data['Model Year'].value_counts().sort_index()
-        
-        trend_chart = px.line(
-            x=yearly_registrations.index,
-            y=yearly_registrations.values,
-            markers=True,
-            labels={'x': 'Model Year', 'y': 'Number of Vehicles'}
-        )
-        
-        trend_chart.update_layout(
-            xaxis_title="Model Year",
-            yaxis_title="Number of Vehicles",
-            margin=dict(l=20, r=20, t=40, b=20),
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='#f0f6fc', family='Inter, sans-serif'),
-            xaxis=dict(gridcolor='#30363d', linecolor='#30363d'),
-            yaxis=dict(gridcolor='#30363d', linecolor='#30363d')
-        )
-        
-        trend_chart.update_traces(
-            line_color='#58a6ff',
-            marker=dict(size=8, color='#a371f7')
-        )
-        
-        st.plotly_chart(trend_chart, use_container_width=True)
-    
-    # Footer
-    st.markdown("---")
-    
-    st.markdown("""
-    <div style='
-        text-align: center; 
-        padding: 2.5rem 1.5rem;
-        background: linear-gradient(135deg, rgba(88, 166, 255, 0.05) 0%, rgba(163, 113, 247, 0.05) 100%);
-        border-radius: 16px;
-        border: 1px solid rgba(88, 166, 255, 0.1);
-    '>
-        <div style='margin-bottom: 1rem;'>
-            <span style='font-size: 1.5rem;'>📊</span>
-            <span style='
-                font-size: 1.15rem;
-                font-weight: 600;
-                background: linear-gradient(135deg, #58a6ff, #a371f7);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                margin-left: 0.5rem;
-            '>EV Population Dashboard</span>
-        </div>
-        
-        <p style='
-            color: #8b949e; 
-            font-size: 0.9rem;
-            margin: 0.75rem 0 0 0;
-            line-height: 1.6;
-        '>
-            Built with Streamlit & Plotly • Data: Washington State Department of Licensing
-        </p>
-        
-        <p style='
-            color: #8b949e; 
-            font-size: 0.85rem;
-            margin: 0.75rem 0 0 0;
-        '>
-            Navigate to <strong style='color: #58a6ff;'>🏠 Home</strong> for complete features 
-            or <strong style='color: #a371f7;'>🔮 Predictions</strong> for ML forecasting
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    if "Model Year" not in ev_df.columns or ev_df.empty:
+        st.info("Model year trend cannot be calculated.")
+        return
 
-else:
-    st.error("⚠️ Unable to load EV dataset. Please verify that the data source exists and is accessible.")
-    
-    st.info("""
-    **Troubleshooting:**
-    - Ensure the CSV file is in the correct location
-    - Check file permissions
-    - Verify data format compatibility
-    """)
+    year_counts = ev_df["Model Year"].value_counts().sort_index()
+    chart = px.line(
+        x=year_counts.index,
+        y=year_counts.values,
+        markers=True,
+        labels={"x": "Model Year", "y": "Number of Vehicles"},
+    )
+    chart.update_layout(
+        margin=dict(l=20, r=20, t=40, b=20),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#f0f6fc", family="Inter, sans-serif"),
+        xaxis=dict(gridcolor="#30363d", linecolor="#30363d"),
+        yaxis=dict(gridcolor="#30363d", linecolor="#30363d"),
+    )
+    chart.update_traces(
+        line_color="#58a6ff",
+        marker=dict(size=8, color="#a371f7"),
+    )
+    st.plotly_chart(chart, use_container_width=True)
+
+
+def _render_footer() -> None:
+    st.markdown("---")
+    st.markdown(
+        """
+        <div style='text-align:center; padding:2rem 1.5rem; background:rgba(88,166,255,0.05);
+            border-radius:16px; border:1px solid rgba(88,166,255,0.1);'>
+            <div style='margin-bottom:0.5rem;'>
+                <span style='font-size:1.4rem'>📊</span>
+                <span style='margin-left:0.4rem; font-size:1.1rem; font-weight:600;
+                    background:linear-gradient(135deg,#58a6ff,#a371f7);-webkit-background-clip:text;
+                    -webkit-text-fill-color:transparent;'>EV Range & Insights Dashboard</span>
+            </div>
+            <p style='color:#8b949e; font-size:0.9rem;'>Built with Streamlit & Plotly • Data source: Washington State Department of Licensing</p>
+            <p style='color:#8b949e; font-size:0.85rem;'>Use the navigation sidebar to explore more pages including ML predictions.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def main() -> None:
+    inject_global_styles()
+
+    try:
+        ev_data = load_ev_data()
+    except FileNotFoundError as exc:
+        st.error(f"Unable to load EV dataset: {exc}")
+        return
+
+    st.title("EV Population Dashboard")
+    st.markdown(
+        """
+        Explore live insights into Washington State's electric vehicle adoption, compare
+        manufacturers, and receive research-based recommendations tailored to your needs.
+        """
+    )
+
+    filtered_data = apply_filters(ev_data)
+
+    _render_metrics(filtered_data)
+
+    st.subheader("�� Smart EV Match Finder")
+    create_improved_ev_advisor(filtered_data)
+
+    _render_distribution_charts(filtered_data)
+    _render_trend_chart(filtered_data)
+    _render_footer()
+
+
+if __name__ == "__main__":
+    main()

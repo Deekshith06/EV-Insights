@@ -1,42 +1,31 @@
 """
-IMPROVED EV ADVISOR - Research-Based Approach
+EV Recommendation Engine
 
-Based on consumer behavior research, people choose cars through this decision hierarchy:
+Consumer research shows that car buyers follow a hierarchical decision process:
 
-1. **Primary Non-Compensatory Filters** (Deal-breakers - applied first):
-   - Budget/Price (55% cite as #1 factor)
-   - Vehicle Type/Body Style (90%+ stay within same type)
-   - Fuel Efficiency/Range (56% for general cars, #1 for EVs)
-   
-2. **Secondary Evaluation Criteria** (Used to compare within filtered set):
-   - Safety (55% importance)
-   - Brand Reputation & Trust (34-47% importance)
-   - Quality/Reliability/Durability
-   - Comfort & Features
-   - Total Cost of Ownership (maintenance, fuel savings)
-   
-3. **EV-Specific Factors**:
-   - Electric Range/Battery (Top concern globally)
-   - Charging Infrastructure Access (49% in US, varies by region)
-   - Price vs. Gas Vehicles (High purchase cost is #1 barrier)
-   - Environmental Benefits (61% for EV buyers)
-   - CAFV Eligibility & Incentives (40% don't understand them)
-   - Hybrid as "Bridge" Option (26% prefer gradual transition)
+1. Non-negotiable filters (deal-breakers):
+   - Budget constraints (55% cite as primary factor)
+   - Vehicle type/body style (90%+ stay within category)
+   - Range requirements (top concern for EV buyers)
 
-4. **Emotional/Psychological Factors**:
-   - Brand Loyalty & Image
-   - Performance/Power (for enthusiasts)
-   - Design/Aesthetics (32% importance)
-   - Status/Reputation (especially for EVs)
-   - Technology/Innovation Interest
+2. Evaluation criteria for comparison:
+   - Safety ratings (55% importance)
+   - Brand reputation (34-47% importance)
+   - Quality and reliability
+   - Features and comfort
+   - Total ownership costs
 
-DECISION PROCESS MODEL:
-Step 1: Problem Recognition (What do I need? → Use Case/Mission)
-Step 2: Budget Setting (Hard constraint)
-Step 3: Body Style Selection (Non-compensatory for most)
-Step 4: Search & Filter (Range, Type, Brand preferences)
-Step 5: Alternative Evaluation (Compare top matches on multiple criteria)
-Step 6: Purchase Decision (Final choice based on composite scoring)
+3. EV-specific considerations:
+   - Battery range (primary concern globally)
+   - Charging infrastructure (49% in US)
+   - Price premium vs gas vehicles
+   - Environmental impact (61% for EV buyers)
+   - Tax incentives and CAFV eligibility
+   - Hybrid as transition option (26% prefer gradual shift)
+
+This advisor mirrors real-world decision-making by applying filters in the same
+order consumers naturally use, then scoring remaining options based on research-backed
+importance weights.
 """
 
 import pandas as pd
@@ -58,7 +47,37 @@ def create_improved_ev_advisor(df_filtered):
     st.subheader("💡 Smart EV Match Finder")
     st.caption("Find your perfect EV in 3 questions, or dive deeper with advanced filters")
     
-    # Range requirements based on use case and range importance
+    # Add CSS for text visibility
+    st.markdown("""
+    <style>
+    .stSelectbox > div > div > select {
+        color: #f0f6fc !important;
+        background-color: #21262d !important;
+    }
+    .stSelectbox > div > div > select option {
+        color: #f0f6fc !important;
+        background-color: #21262d !important;
+    }
+    .stSlider > div > div > div {
+        color: #f0f6fc !important;
+    }
+    .stTextInput > div > input {
+        color: #f0f6fc !important;
+        background-color: #21262d !important;
+    }
+    .stForm {
+        color: #f0f6fc !important;
+    }
+    .stRadio > div {
+        color: #f0f6fc !important;
+    }
+    .stMultiSelect > div > div > div {
+        color: #f0f6fc !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Shared range requirements used by multiple tabs
     range_requirements = {
         "Daily commuting (< 50 mi/day)": {
             "Not critical (city driving)": 100,
@@ -163,7 +182,6 @@ def create_improved_ev_advisor(df_filtered):
                     (candidates['Base MSRP'].fillna(999999) <= max_price)
                 ]
             
-            # Range filter
             min_range = range_requirements[use_case][range_need]
             if 'Electric Range' in candidates.columns:
                 candidates = candidates[candidates['Electric Range'].fillna(0) >= min_range]
@@ -594,7 +612,7 @@ def display_recommendations(df, use_case, budget, range_need, method="quick", pr
     
     alternatives = get_diverse_alternatives(ranked, top_vehicle)
     
-    cols = st.columns(max(1, min(3, len(alternatives))))
+    cols = st.columns(min(3, len(alternatives)))
     
     for idx, (title, vehicle, highlight) in enumerate(alternatives):
         with cols[idx]:
