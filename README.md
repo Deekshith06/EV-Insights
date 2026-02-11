@@ -11,12 +11,28 @@ A data-driven platform analyzing **177,000+ electric vehicle records** from Wash
 
 ## 🔄 How It Works
 
-```
-What it does:
+```mermaid
+graph TD
+    subgraph Step 1: ML Training Pipeline
+        A["Electric_Vehicle_Population_Data.csv"] -->|Read 177K records| B["data_loader.py"]
+        B -->|Clean & filter| C["predictions.py"]
+        C -->|Encode features| D{"Random Forest Model"}
+        D -->|Train 80/20 split| E["R² = 0.986 | MAE = 5.2 mi"]
+    end
 
-177K+ vehicle records → Feature extraction & preprocessing
-Multi-factor ML analysis → Range prediction (R² = 0.986)
-Interactive dashboard → Real-time charts + filtered insights
+    subgraph Step 2: User Prediction
+        F["User selects Make"] -->|Filter| G["Car Model dropdown"]
+        G --> H["Select Year & Type"]
+        H -->|Encode inputs| D
+        D -->|Predict| I["Estimated Range in miles"]
+    end
+
+    subgraph Step 3: Dashboard Analytics
+        B -->|Load data| J["home.py"]
+        J -->|Sidebar filters| K["Filtered Dataset"]
+        K --> L["4 Metric Cards"]
+        K --> M["4 Interactive Charts"]
+    end
 ```
 
 ---
