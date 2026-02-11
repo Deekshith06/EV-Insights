@@ -1,4 +1,4 @@
-# 🔋 EV Range Estimation & Insights Dashboard
+# 🔋 EV Insights
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue?style=flat-square&logo=python)
 ![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-red?style=flat-square&logo=streamlit)

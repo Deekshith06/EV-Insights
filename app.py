@@ -2,7 +2,7 @@ import streamlit as st
 
 # page setup
 st.set_page_config(
-    page_title="EV Range Estimation",
+    page_title="EV Insights",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
