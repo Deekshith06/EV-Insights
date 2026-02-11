@@ -9,7 +9,7 @@ ML-powered dashboard that predicts EV range and visualizes **177K+ electric vehi
 
 ---
 
-**🌐 [Try it Live](https://ev-insights-oqsxwwjpohsefy5lj68otg.streamlit.app/)** - No installation required
+**🌐 [Try it Live](https://ev-insights.streamlit.app/)** - No installation required
 
 ## 🔄 How It Works
 
